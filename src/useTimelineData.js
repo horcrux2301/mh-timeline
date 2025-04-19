@@ -40,7 +40,6 @@ const useTimelineData = (csvUrl) => {
           skipEmptyLines: true,
           complete: (results) => {
             if (!isMounted) return;
-            console.log("Raw CSV data parsed:", results.data);
             // Store the raw parsed data
             setRawCsvData(results.data || []); // Ensure it's an array even if empty/error
             setIsLoading(false);

@@ -185,7 +185,6 @@ export const processCsvData = (csvData) => {
       }
     }
 
-    console.log("Processed timeline data:", timelineJson);
     return { timelineJson: timelineJson, error: null };
 
   } catch (err) {
