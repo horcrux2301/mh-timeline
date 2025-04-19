@@ -13,12 +13,20 @@ const isInsideIframe = () => {
   }
 };
 
+// Function to check if the page is running on localhost
+const isLocalhost = () => {
+  return (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  );
+};
+
 // Get the root element
 const rootElement = document.getElementById("root");
 
-// Only render the app if it's inside an iframe
+// Render the app if it's inside an iframe OR running on localhost
 const shouldDisplay = () => {
-  return isInsideIframe();
+  return isInsideIframe() || isLocalhost();
 };
 
 if (shouldDisplay()) {
