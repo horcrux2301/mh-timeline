@@ -1,0 +1,412 @@
+import React, { useEffect, useRef, useState, useMemo } from "react";
+import Select from "react-select";
+import useTimelineData from "./useTimelineData";
+import { processCsvData } from "./timelineUtils";
+import "./timeline.css";
+import {
+  ToggleButtonGroup,
+  ToggleButton,
+  Chip,
+  IconButton,
+  Tooltip,
+  Stack,
+  Typography,
+} from "@mui/material";
+import { FilterList, CheckCircle, Cancel } from "@mui/icons-material";
+
+// Import the CSV file URL (Vite/Webpack specific)
+import localCsvDataUrl from "./spectrum2.csv?url";
+
+// Default TimelineJS options
+const TIMELINE_OPTIONS = {
+  start_at_end: false,
+  default_bg_color: "#ffffff",
+  timenav_height: 150,
+  scale_factor: 2,
+  initial_zoom: 4,
+  zoom_sequence: [0.5, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89],
+  duration: 1000,
+};
+
+const TimelineComponent = () => {
+  const { rawCsvData, uniqueGroups, isLoading, error } =
+    useTimelineData(localCsvDataUrl);
+  const [activeGroups, setActiveGroups] = useState(new Set());
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const timelineContainer = useRef(null);
+  const timelineInstance = useRef(null);
+
+  // Initialize active groups when uniqueGroups are loaded
+  useEffect(() => {
+    if (uniqueGroups.length > 0) {
+      setActiveGroups(new Set(uniqueGroups)); // Start with all groups active
+    }
+  }, [uniqueGroups]);
+
+  // Create search options from raw data with unique IDs matching timeline events
+  const searchOptions = useMemo(() => {
+    if (!rawCsvData) return [];
+    return rawCsvData
+      .map((event) => {
+        const uniqueId = `event-${event.Year}-${event.Headline?.replace(
+          /\s+/g,
+          "-"
+        )}`;
+        return {
+          value: uniqueId,
+          label: `${event.Year} - ${event.Headline}`,
+          year: event.Year,
+          headline: event.Headline,
+          uniqueId: uniqueId,
+        };
+      })
+      .sort((a, b) => a.year - b.year);
+  }, [rawCsvData]);
+
+  // Filter and process timeline data based on active groups
+  const timelineData = useMemo(() => {
+    if (!rawCsvData) return null;
+
+    // Filter events by active groups
+    const filteredData = rawCsvData.filter((event) =>
+      activeGroups.has(event.Group?.trim() || "")
+    );
+
+    // If no events match the filter, return null to show message
+    if (filteredData.length === 0) return null;
+
+    // Process the filtered data
+    const { timelineJson, error: processingError } =
+      processCsvData(filteredData);
+    if (processingError) {
+      console.error("Error processing filtered data:", processingError);
+      return null;
+    }
+    return timelineJson;
+  }, [rawCsvData, activeGroups]);
+
+  // Effect to initialize or update TimelineJS
+  useEffect(() => {
+    if (window.TL && timelineData && timelineContainer.current) {
+      if (timelineInstance.current) {
+        timelineContainer.current.innerHTML = "";
+        timelineInstance.current = null;
+      }
+
+      try {
+        timelineInstance.current = new window.TL.Timeline(
+          timelineContainer.current,
+          timelineData,
+          TIMELINE_OPTIONS
+        );
+      } catch (initError) {
+        console.error("Timeline initialization error:", initError);
+      }
+    }
+  }, [timelineData]);
+
+  // Effect to load TimelineJS assets
+  useEffect(() => {
+    if (!window.TL) {
+      const script = document.createElement("script");
+      script.src =
+        "https://cdn.knightlab.com/libs/timeline3/latest/js/timeline.js";
+      script.async = true;
+      document.body.appendChild(script);
+
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href =
+        "https://cdn.knightlab.com/libs/timeline3/latest/css/timeline.css";
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  // Handle group toggle
+  const handleGroupToggle = (group) => {
+    setActiveGroups((prev) => {
+      const newGroups = new Set(prev);
+      if (newGroups.has(group)) {
+        newGroups.delete(group);
+      } else {
+        newGroups.add(group);
+      }
+      return newGroups;
+    });
+  };
+
+  // Handle select/unselect all groups
+  const handleSelectAllGroups = () => {
+    setActiveGroups(new Set(uniqueGroups));
+  };
+
+  const handleUnselectAllGroups = () => {
+    setActiveGroups(new Set());
+  };
+
+  // Handle event selection with direct ID matching
+  const handleEventSelect = (option) => {
+    setSelectedEvent(option);
+    if (timelineInstance.current && option) {
+      // Use a small delay to ensure the timeline is ready
+      setTimeout(() => {
+        try {
+          timelineInstance.current.goToId(option.uniqueId);
+          // Clear search after a longer delay to ensure scroll completes
+          setTimeout(() => {
+            setSelectedEvent(null);
+          }, 1500);
+        } catch (err) {
+          console.error("Error scrolling to event:", err);
+          // Fallback: try to find the event by matching year and headline
+          const event = timelineData.events.find(
+            (e) =>
+              e.text.headline === option.headline &&
+              e.start_date.year === parseInt(option.year)
+          );
+          if (event) {
+            timelineInstance.current.goToId(event.unique_id);
+            // Clear search after a longer delay to ensure scroll completes
+            setTimeout(() => {
+              setSelectedEvent(null);
+            }, 1500);
+          }
+        }
+      }, 100);
+    }
+  };
+
+  return (
+    <div className="timeline-wrapper">
+      <div className="timeline-controls">
+        <div className="search-container">
+          <Select
+            value={selectedEvent}
+            onChange={handleEventSelect}
+            options={searchOptions}
+            isDisabled={isLoading}
+            placeholder="Search events..."
+            isClearable
+            className="event-search"
+            styles={{
+              control: (base) => ({
+                ...base,
+                minWidth: "300px",
+                backgroundColor: "#f8fafc",
+                borderColor: "#e2e8f0",
+                boxShadow: "none",
+                "&:hover": {
+                  borderColor: "#94a3b8",
+                },
+              }),
+              menu: (base) => ({
+                ...base,
+                zIndex: 9999,
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
+                overflow: "hidden",
+              }),
+              option: (base, state) => ({
+                ...base,
+                backgroundColor: state.isSelected
+                  ? "#3b82f6"
+                  : state.isFocused
+                  ? "#f1f5f9"
+                  : "white",
+                color: state.isSelected ? "white" : "#1e293b",
+                cursor: "pointer",
+                "&:hover": {
+                  backgroundColor: state.isSelected ? "#3b82f6" : "#f1f5f9",
+                },
+              }),
+              input: (base) => ({
+                ...base,
+                color: "#1e293b",
+              }),
+              placeholder: (base) => ({
+                ...base,
+                color: "#94a3b8",
+              }),
+            }}
+          />
+        </div>
+        <div className="group-filters">
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={2}
+            sx={{
+              mb: 2,
+              "& .MuiSvgIcon-root": {
+                color: "#64748b",
+              },
+            }}
+          >
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <FilterList />
+              <Typography
+                variant="h6"
+                sx={{
+                  color: "#1e293b",
+                  fontWeight: "normal",
+                  fontSize: "1.125rem",
+                }}
+              >
+                Filter by Groups
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1}>
+              <Tooltip title="Select All Groups">
+                <IconButton
+                  onClick={handleSelectAllGroups}
+                  color={
+                    activeGroups.size === uniqueGroups.length
+                      ? "primary"
+                      : "default"
+                  }
+                >
+                  <CheckCircle />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Unselect All Groups">
+                <IconButton
+                  onClick={handleUnselectAllGroups}
+                  color={activeGroups.size === 0 ? "primary" : "default"}
+                >
+                  <Cancel />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </Stack>
+          <Stack
+            direction="row"
+            flexWrap="wrap"
+            gap={1}
+            sx={{
+              "& .MuiChip-root": {
+                transition: "all 0.2s ease",
+                cursor: "pointer",
+                "&:hover": {
+                  transform: "translateY(-1px)",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                },
+              },
+            }}
+          >
+            {uniqueGroups.map((group) => (
+              <Chip
+                key={group}
+                label={group}
+                onClick={() => handleGroupToggle(group)}
+                variant={activeGroups.has(group) ? "filled" : "outlined"}
+                color={activeGroups.has(group) ? "primary" : "default"}
+                size="medium"
+              />
+            ))}
+          </Stack>
+        </div>
+      </div>
+
+      <div className="timeline-component">
+        {isLoading && <div className="loading">Loading timeline data...</div>}
+        {error && !isLoading && (
+          <div className="error">
+            <p>Error loading timeline: {error}</p>
+            <p>Please check the CSV file format and ensure it's accessible.</p>
+          </div>
+        )}
+        {!isLoading &&
+          !error &&
+          (!timelineData || !timelineData.events?.length) && (
+            <div className="no-events">
+              <Typography
+                variant="h6"
+                color="textSecondary"
+                align="center"
+                sx={{ mt: 4 }}
+              >
+                No events to display
+              </Typography>
+              <Typography color="textSecondary" align="center">
+                {activeGroups.size === 0
+                  ? "Please select at least one group to view events"
+                  : "No events found for the selected groups"}
+              </Typography>
+            </div>
+          )}
+        <div
+          ref={timelineContainer}
+          className="timeline-container"
+          style={{
+            width: "100%",
+            height: "750px",
+            visibility:
+              !isLoading && !error && timelineData?.events?.length
+                ? "visible"
+                : "hidden",
+          }}
+        />
+      </div>
+
+      <style>{`
+        .timeline-wrapper {
+          padding: 32px;
+          background: #f8fafc;
+          min-height: 100vh;
+        }
+
+        .timeline-controls {
+          margin-bottom: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .search-container {
+          width: 100%;
+          max-width: 600px;
+        }
+
+        .search-container .event-search {
+          font-size: 16px;
+        }
+
+        .search-container .event-search input {
+          padding: 12px;
+          border-radius: 8px;
+        }
+
+        .group-filters {
+          margin-top: 8px;
+        }
+
+        .loading, .error, .no-events {
+          padding: 32px;
+          text-align: center;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .error {
+          color: #dc2626;
+          border: 1px solid #fee2e2;
+          background: #fef2f2;
+        }
+
+        .no-events {
+          min-height: 240px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 12px;
+          color: #64748b;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default TimelineComponent;
