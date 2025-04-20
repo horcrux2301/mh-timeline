@@ -333,49 +333,9 @@ const TimelineComponent = () => {
             />
           </div>
         </div>
-        <div className="group-filters">
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={0.5}
-            flexWrap="wrap"
-            sx={{
-              mb: 1,
-              gap: 0.5,
-              flexWrap: "wrap",
-              "& .MuiSvgIcon-root": {
-                color: "#64748b",
-                fontSize: "1.1rem",
-              },
-              "& .MuiChip-root": {
-                transition: "all 0.2s ease",
-                cursor: "pointer",
-                fontSize: "0.92rem",
-                borderRadius: "16px",
-                padding: "0 2px",
-                height: "28px",
-                margin: "2px 2px 2px 0",
-                "&:hover": {
-                  transform: "translateY(-1px)",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
-                },
-              },
-            }}
-          >
-            <FilterList sx={{ fontSize: "1.2rem", mr: 0.5 }} />
-            <Typography
-              variant="subtitle1"
-              sx={{
-                color: "#1e293b",
-                fontWeight: 500,
-                fontSize: "1rem",
-                mr: 0.5,
-                minWidth: "120px",
-              }}
-            >
-              Filter by Groups
-            </Typography>
-            <Tooltip title="Select All Groups">
+        <div className="filter-chips-row">
+          <div className="filter-actions-container">
+            <Tooltip title="Select All">
               <IconButton
                 onClick={handleSelectAllGroups}
                 color={
@@ -384,40 +344,62 @@ const TimelineComponent = () => {
                     : "default"
                 }
                 size="small"
-                sx={{ p: "4px" }}
+                sx={{
+                  p: "2px",
+                  mr: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                <CheckCircle sx={{ fontSize: "1.1rem" }} />
+                <CheckCircle sx={{ fontSize: "0.9rem" }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Unselect All Groups">
+            <Tooltip title="Clear All">
               <IconButton
                 onClick={handleUnselectAllGroups}
                 color={activeGroups.size === 0 ? "primary" : "default"}
                 size="small"
-                sx={{ p: "4px" }}
+                sx={{
+                  p: "2px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                <Cancel sx={{ fontSize: "1.1rem" }} />
+                <Cancel sx={{ fontSize: "0.9rem" }} />
               </IconButton>
             </Tooltip>
-            {uniqueGroups.map((group) => (
-              <Chip
-                key={group}
-                label={group}
-                onClick={() => handleGroupToggle(group)}
-                variant={activeGroups.has(group) ? "filled" : "outlined"}
-                color={activeGroups.has(group) ? "primary" : "default"}
-                size="small"
-                sx={{
-                  m: "2px 2px 2px 0",
-                  fontWeight: 500,
-                  letterSpacing: 0,
-                  px: 1.2,
-                  borderRadius: "16px",
-                  height: "28px",
-                }}
-              />
-            ))}
-          </Stack>
+          </div>
+          <div className="filter-chips-scroll">
+            <div className="filter-chips-container">
+              {uniqueGroups.map((group) => (
+                <Chip
+                  key={group}
+                  label={group}
+                  onClick={() => handleGroupToggle(group)}
+                  variant={activeGroups.has(group) ? "filled" : "outlined"}
+                  color={activeGroups.has(group) ? "primary" : "default"}
+                  size="small"
+                  sx={{
+                    m: "2px",
+                    fontWeight: 500,
+                    letterSpacing: 0,
+                    px: 0.8,
+                    borderRadius: "12px",
+                    height: "22px",
+                    transition: "all 0.15s ease",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    "&:hover": {
+                      transform: "translateY(-1px)",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                    },
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -500,11 +482,40 @@ const TimelineComponent = () => {
           border-radius: 8px;
         }
 
-        .group-filters {
-          margin-top: 4px;
+        .filter-chips-row {
+          margin-top: 8px;
           width: 100%;
+          display: flex;
+          align-items: center;
+          background-color: white;
+          border-radius: 4px;
+          padding: 6px 8px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        
+        .filter-actions-container {
+          display: flex;
+          align-items: center;
+          padding-right: 6px;
+          border-right: 1px solid #f1f5f9;
+        }
+        
+        .filter-chips-scroll {
+          flex: 1;
           overflow-x: auto;
-          padding-bottom: 2px;
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        .filter-chips-scroll::-webkit-scrollbar {
+          display: none; /* Chrome, Safari, Opera */
+        }
+        
+        .filter-chips-container {
+          display: flex;
+          flex-wrap: nowrap;
+          padding: 0 4px;
+          min-width: min-content;
         }
 
         .loading, .error, .no-events {
