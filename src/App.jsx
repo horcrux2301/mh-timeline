@@ -14,23 +14,28 @@ import {
 } from "@mui/material";
 import { FilterList, CheckCircle, Cancel } from "@mui/icons-material";
 
-// Import the CSV file URL (Vite/Webpack specific)
-import localCsvDataUrl from "./spectrum2.csv?url";
+// Import the CSV file URLs (Vite/Webpack specific)
+import modernHistoryUrl from "./mh.csv?url";
+import ancientHistoryUrl from "./ah.csv?url";
 
-// Default TimelineJS options
-const TIMELINE_OPTIONS = {
+// TimelineJS options based on timeline type
+const getTimelineOptions = (timelineType) => ({
   start_at_end: false,
   default_bg_color: "#ffffff",
   timenav_height: 150,
-  scale_factor: 2,
-  initial_zoom: 4,
+  scale_factor: timelineType === "ancient" ? 1 : 2,
+  initial_zoom: timelineType === "ancient" ? 1 : 4,
   zoom_sequence: [0.5, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89],
   duration: 1000,
-};
+});
 
 const TimelineComponent = () => {
+  const [selectedTimelineType, setSelectedTimelineType] = useState("modern"); // modern or ancient
+  const csvUrl =
+    selectedTimelineType === "modern" ? modernHistoryUrl : ancientHistoryUrl;
+
   const { rawCsvData, uniqueGroups, isLoading, error } =
-    useTimelineData(localCsvDataUrl);
+    useTimelineData(csvUrl);
   const [activeGroups, setActiveGroups] = useState(new Set());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const timelineContainer = useRef(null);
@@ -97,7 +102,7 @@ const TimelineComponent = () => {
         timelineInstance.current = new window.TL.Timeline(
           timelineContainer.current,
           timelineData,
-          TIMELINE_OPTIONS
+          getTimelineOptions(selectedTimelineType)
         );
       } catch (initError) {
         console.error("Timeline initialization error:", initError);
@@ -179,121 +184,162 @@ const TimelineComponent = () => {
   return (
     <div className="timeline-wrapper">
       <div className="timeline-controls">
-        <div className="search-container">
-          <Select
-            value={selectedEvent}
-            onChange={handleEventSelect}
-            options={searchOptions}
-            isDisabled={isLoading}
-            placeholder="Search events..."
-            isClearable
-            className="event-search"
-            styles={{
-              control: (base) => ({
-                ...base,
-                minWidth: "300px",
-                backgroundColor: "#f8fafc",
-                borderColor: "#e2e8f0",
-                boxShadow: "none",
-                "&:hover": {
-                  borderColor: "#94a3b8",
-                },
-              }),
-              menu: (base) => ({
-                ...base,
-                zIndex: 9999,
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-                overflow: "hidden",
-              }),
-              option: (base, state) => ({
-                ...base,
-                backgroundColor: state.isSelected
-                  ? "#3b82f6"
-                  : state.isFocused
-                  ? "#f1f5f9"
-                  : "white",
-                color: state.isSelected ? "white" : "#1e293b",
-                cursor: "pointer",
-                "&:hover": {
-                  backgroundColor: state.isSelected ? "#3b82f6" : "#f1f5f9",
-                },
-              }),
-              input: (base) => ({
-                ...base,
-                color: "#1e293b",
-              }),
-              placeholder: (base) => ({
-                ...base,
-                color: "#94a3b8",
-              }),
-            }}
-          />
+        <div className="top-controls">
+          <div className="timeline-type-selector">
+            <Select
+              value={{
+                value: selectedTimelineType,
+                label:
+                  selectedTimelineType === "modern"
+                    ? "Modern History"
+                    : "Ancient History",
+              }}
+              onChange={(option) => setSelectedTimelineType(option.value)}
+              options={[
+                { value: "modern", label: "Modern History" },
+                { value: "ancient", label: "Ancient History" },
+              ]}
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  minWidth: "200px",
+                  backgroundColor: "#f8fafc",
+                  borderColor: "#e2e8f0",
+                  boxShadow: "none",
+                  "&:hover": {
+                    borderColor: "#94a3b8",
+                  },
+                }),
+                menu: (base) => ({
+                  ...base,
+                  zIndex: 9999,
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                }),
+              }}
+            />
+          </div>
+          <div className="search-container">
+            <Select
+              value={selectedEvent}
+              onChange={handleEventSelect}
+              options={searchOptions}
+              isDisabled={isLoading}
+              placeholder="Search events..."
+              isClearable
+              className="event-search"
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  minWidth: "300px",
+                  backgroundColor: "#f8fafc",
+                  borderColor: "#e2e8f0",
+                  boxShadow: "none",
+                  "&:hover": {
+                    borderColor: "#94a3b8",
+                  },
+                }),
+                menu: (base) => ({
+                  ...base,
+                  zIndex: 9999,
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                }),
+                option: (base, state) => ({
+                  ...base,
+                  backgroundColor: state.isSelected
+                    ? "#3b82f6"
+                    : state.isFocused
+                    ? "#f1f5f9"
+                    : "white",
+                  color: state.isSelected ? "white" : "#1e293b",
+                  cursor: "pointer",
+                  "&:hover": {
+                    backgroundColor: state.isSelected ? "#3b82f6" : "#f1f5f9",
+                  },
+                }),
+                input: (base) => ({
+                  ...base,
+                  color: "#1e293b",
+                }),
+                placeholder: (base) => ({
+                  ...base,
+                  color: "#94a3b8",
+                }),
+              }}
+            />
+          </div>
         </div>
         <div className="group-filters">
           <Stack
             direction="row"
             alignItems="center"
-            spacing={2}
+            spacing={0.5}
+            flexWrap="wrap"
             sx={{
-              mb: 2,
+              mb: 1,
+              gap: 0.5,
+              flexWrap: "wrap",
               "& .MuiSvgIcon-root": {
                 color: "#64748b",
+                fontSize: "1.1rem",
               },
-            }}
-          >
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <FilterList />
-              <Typography
-                variant="h6"
-                sx={{
-                  color: "#1e293b",
-                  fontWeight: "normal",
-                  fontSize: "1.125rem",
-                }}
-              >
-                Filter by Groups
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1}>
-              <Tooltip title="Select All Groups">
-                <IconButton
-                  onClick={handleSelectAllGroups}
-                  color={
-                    activeGroups.size === uniqueGroups.length
-                      ? "primary"
-                      : "default"
-                  }
-                >
-                  <CheckCircle />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Unselect All Groups">
-                <IconButton
-                  onClick={handleUnselectAllGroups}
-                  color={activeGroups.size === 0 ? "primary" : "default"}
-                >
-                  <Cancel />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-          </Stack>
-          <Stack
-            direction="row"
-            flexWrap="wrap"
-            gap={1}
-            sx={{
               "& .MuiChip-root": {
                 transition: "all 0.2s ease",
                 cursor: "pointer",
+                fontSize: "0.92rem",
+                borderRadius: "16px",
+                padding: "0 2px",
+                height: "28px",
+                margin: "2px 2px 2px 0",
                 "&:hover": {
                   transform: "translateY(-1px)",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
                 },
               },
             }}
           >
+            <FilterList sx={{ fontSize: "1.2rem", mr: 0.5 }} />
+            <Typography
+              variant="subtitle1"
+              sx={{
+                color: "#1e293b",
+                fontWeight: 500,
+                fontSize: "1rem",
+                mr: 0.5,
+                minWidth: "120px",
+              }}
+            >
+              Filter by Groups
+            </Typography>
+            <Tooltip title="Select All Groups">
+              <IconButton
+                onClick={handleSelectAllGroups}
+                color={
+                  activeGroups.size === uniqueGroups.length
+                    ? "primary"
+                    : "default"
+                }
+                size="small"
+                sx={{ p: "4px" }}
+              >
+                <CheckCircle sx={{ fontSize: "1.1rem" }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Unselect All Groups">
+              <IconButton
+                onClick={handleUnselectAllGroups}
+                color={activeGroups.size === 0 ? "primary" : "default"}
+                size="small"
+                sx={{ p: "4px" }}
+              >
+                <Cancel sx={{ fontSize: "1.1rem" }} />
+              </IconButton>
+            </Tooltip>
             {uniqueGroups.map((group) => (
               <Chip
                 key={group}
@@ -301,7 +347,15 @@ const TimelineComponent = () => {
                 onClick={() => handleGroupToggle(group)}
                 variant={activeGroups.has(group) ? "filled" : "outlined"}
                 color={activeGroups.has(group) ? "primary" : "default"}
-                size="medium"
+                size="small"
+                sx={{
+                  m: "2px 2px 2px 0",
+                  fontWeight: 500,
+                  letterSpacing: 0,
+                  px: 1.2,
+                  borderRadius: "16px",
+                  height: "28px",
+                }}
               />
             ))}
           </Stack>
@@ -363,8 +417,18 @@ const TimelineComponent = () => {
           gap: 20px;
         }
 
+        .top-controls {
+          display: flex;
+          gap: 20px;
+          align-items: center;
+        }
+
+        .timeline-type-selector {
+          min-width: 200px;
+        }
+
         .search-container {
-          width: 100%;
+          flex: 1;
           max-width: 600px;
         }
 
@@ -378,7 +442,10 @@ const TimelineComponent = () => {
         }
 
         .group-filters {
-          margin-top: 8px;
+          margin-top: 4px;
+          width: 100%;
+          overflow-x: auto;
+          padding-bottom: 2px;
         }
 
         .loading, .error, .no-events {

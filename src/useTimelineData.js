@@ -3,10 +3,6 @@ import Papa from "papaparse";
 // processCsvData and createTestTimeline are no longer needed here directly
 // import { processCsvData, createTestTimeline } from "./timelineUtils";
 
-// Import the raw CSV data using the Vite/Webpack raw loader syntax
-// Note: Ensure your build setup supports this (e.g., Vite does by default)
-import localCsvDataUrl from "./spectrum2.csv?url"; // Get URL for fetch
-
 /**
  * Custom hook to fetch and parse timeline data from a local CSV file.
  * It returns the raw parsed data and unique groups found.
