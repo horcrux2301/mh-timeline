@@ -57,11 +57,16 @@ const TimelineComponent = () => {
           /\s+/g,
           "-"
         )}`;
+        // Show a snippet of the text in the label for context
+        const textSnippet = event.Text
+          ? `: ${event.Text.slice(0, 60)}${event.Text.length > 60 ? "..." : ""}`
+          : "";
         return {
           value: uniqueId,
-          label: `${event.Year} - ${event.Headline}`,
+          label: `${event.Year} - ${event.Headline || ""}${textSnippet}`,
           year: event.Year,
           headline: event.Headline,
+          text: event.Text || "",
           uniqueId: uniqueId,
         };
       })
@@ -230,6 +235,56 @@ const TimelineComponent = () => {
               placeholder="Search events..."
               isClearable
               className="event-search"
+              filterOption={(option, input) => {
+                // Custom filter: match headline or text (case-insensitive)
+                const label = option.label?.toLowerCase() || "";
+                const headline = option.data.headline?.toLowerCase() || "";
+                const text = option.data.text?.toLowerCase() || "";
+                const inputValue = input.toLowerCase();
+                return (
+                  label.includes(inputValue) ||
+                  headline.includes(inputValue) ||
+                  text.includes(inputValue)
+                );
+              }}
+              formatOptionLabel={(option) => (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    minWidth: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      color: "#1e293b",
+                      fontSize: "1rem",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      minWidth: 0,
+                    }}
+                  >
+                    {option.year} - {option.headline}
+                  </span>
+                  {option.text && (
+                    <span
+                      style={{
+                        color: "#64748b",
+                        fontSize: "0.92rem",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        minWidth: 0,
+                        marginTop: 2,
+                      }}
+                    >
+                      {option.text}
+                    </span>
+                  )}
+                </div>
+              )}
               styles={{
                 control: (base) => ({
                   ...base,
@@ -251,6 +306,7 @@ const TimelineComponent = () => {
                 }),
                 option: (base, state) => ({
                   ...base,
+                  alignItems: "flex-start",
                   backgroundColor: state.isSelected
                     ? "#3b82f6"
                     : state.isFocused
@@ -258,6 +314,9 @@ const TimelineComponent = () => {
                     : "white",
                   color: state.isSelected ? "white" : "#1e293b",
                   cursor: "pointer",
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                  minHeight: "unset",
                   "&:hover": {
                     backgroundColor: state.isSelected ? "#3b82f6" : "#f1f5f9",
                   },
