@@ -27,6 +27,7 @@ const getTimelineOptions = (timelineType) => ({
   initial_zoom: timelineType === "ancient" ? 4 : 4,
   zoom_sequence: [0.5, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89],
   duration: 1000,
+  use_tl_attribution: false, // Remove the attribution link at the bottom
 });
 
 const TimelineComponent = () => {
@@ -169,6 +170,15 @@ const TimelineComponent = () => {
           timelineData,
           getTimelineOptions(selectedTimelineType)
         );
+
+        // Additional measure to hide the attribution element
+        setTimeout(() => {
+          const attributionElements =
+            document.querySelectorAll(".tl-attribution");
+          attributionElements.forEach((el) => {
+            el.style.display = "none";
+          });
+        }, 100);
       } catch (initError) {
         console.error("Timeline initialization error:", initError);
       }
