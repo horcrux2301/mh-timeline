@@ -23,30 +23,90 @@ const getTimelineOptions = (timelineType) => ({
   start_at_end: false,
   default_bg_color: "#ffffff",
   timenav_height: 150,
-  scale_factor: timelineType === "ancient" ? 1 : 2,
-  initial_zoom: timelineType === "ancient" ? 1 : 4,
+  scale_factor: timelineType === "ancient" ? 2 : 2,
+  initial_zoom: timelineType === "ancient" ? 4 : 4,
   zoom_sequence: [0.5, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89],
   duration: 1000,
 });
 
 const TimelineComponent = () => {
-  const [selectedTimelineType, setSelectedTimelineType] = useState("modern"); // modern or ancient
+  // Initialize selectedTimelineType from localStorage or default to "modern"
+  const [selectedTimelineType, setSelectedTimelineType] = useState(() => {
+    const savedType = localStorage.getItem("selectedTimelineType");
+    return savedType || "modern"; // Use saved value or default to "modern"
+  });
+  // Save selectedTimelineType to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("selectedTimelineType", selectedTimelineType);
+  }, [selectedTimelineType]);
+
   const csvUrl =
     selectedTimelineType === "modern" ? modernHistoryUrl : ancientHistoryUrl;
 
   const { rawCsvData, uniqueGroups, isLoading, error } =
     useTimelineData(csvUrl);
-  const [activeGroups, setActiveGroups] = useState(new Set());
+
+  // Initialize active groups with separate storage for each timeline type
+  const [activeGroups, setActiveGroups] = useState(() => {
+    try {
+      // Try to load saved groups for the current timeline type
+      const savedGroups = localStorage.getItem(
+        `activeGroups_${selectedTimelineType}`
+      );
+      if (savedGroups) {
+        return new Set(JSON.parse(savedGroups));
+      }
+      return new Set(); // Default to empty set if nothing saved
+    } catch (e) {
+      console.error("Error loading active groups from localStorage:", e);
+      return new Set();
+    }
+  });
   const [selectedEvent, setSelectedEvent] = useState(null);
   const timelineContainer = useRef(null);
   const timelineInstance = useRef(null);
 
-  // Initialize active groups when uniqueGroups are loaded
+  // Save active groups to localStorage when they change
+  useEffect(() => {
+    try {
+      if (activeGroups.size > 0) {
+        localStorage.setItem(
+          `activeGroups_${selectedTimelineType}`,
+          JSON.stringify(Array.from(activeGroups))
+        );
+      }
+    } catch (e) {
+      console.error("Error saving active groups to localStorage:", e);
+    }
+  }, [activeGroups, selectedTimelineType]);
+
+  // Initialize active groups when uniqueGroups are loaded or timeline type changes
   useEffect(() => {
     if (uniqueGroups.length > 0) {
-      setActiveGroups(new Set(uniqueGroups)); // Start with all groups active
+      // Check if we have saved groups for this timeline type
+      try {
+        const savedGroups = localStorage.getItem(
+          `activeGroups_${selectedTimelineType}`
+        );
+        if (savedGroups) {
+          const parsedGroups = JSON.parse(savedGroups);
+          // Filter out any saved groups that no longer exist in the current data
+          const validGroups = parsedGroups.filter((group) =>
+            uniqueGroups.includes(group)
+          );
+          if (validGroups.length > 0) {
+            setActiveGroups(new Set(validGroups));
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Error processing saved groups:", e);
+      }
+
+      // If no valid saved groups, default to all groups active
+      setActiveGroups(new Set(uniqueGroups));
     }
-  }, [uniqueGroups]);
+  }, [uniqueGroups, selectedTimelineType]);
 
   // Create search options from raw data with unique IDs matching timeline events
   const searchOptions = useMemo(() => {
