@@ -502,7 +502,7 @@ const TimelineComponent = () => {
         
         .filter-chips-scroll {
           flex: 1;
-          overflow-x: auto;
+          /* Removed overflow-x: auto to allow wrapping instead of scrolling */
           scrollbar-width: none; /* Firefox */
           -ms-overflow-style: none; /* IE and Edge */
         }
@@ -513,9 +513,9 @@ const TimelineComponent = () => {
         
         .filter-chips-container {
           display: flex;
-          flex-wrap: nowrap;
+          flex-wrap: wrap; /* Changed from nowrap to wrap to allow chips to go to next line */
           padding: 0 4px;
-          min-width: min-content;
+          /* Removed min-width: min-content as it's not needed with wrapping */
         }
 
         .loading, .error, .no-events {
