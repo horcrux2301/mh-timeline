@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import Select from "react-select";
 import useTimelineData from "./useTimelineData";
 import { processCsvData } from "./timelineUtils";
@@ -36,6 +42,9 @@ const TimelineComponent = () => {
     const savedType = localStorage.getItem("selectedTimelineType");
     return savedType || "modern"; // Use saved value or default to "modern"
   });
+
+  // Flag to track if this is the initial render after a page refresh
+  const isInitialRender = useRef(true);
   // Save selectedTimelineType to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("selectedTimelineType", selectedTimelineType);
@@ -156,15 +165,27 @@ const TimelineComponent = () => {
     return timelineJson;
   }, [rawCsvData, activeGroups]);
 
+  // Helper function to check if an event ID exists in the timeline data
+  const eventIdExists = useCallback((eventId, events) => {
+    if (!eventId || !events || events.length === 0) return false;
+    return events.some((event) => event.unique_id === eventId);
+  }, []);
+
   // Effect to initialize or update TimelineJS
   useEffect(() => {
     if (window.TL && timelineData && timelineContainer.current) {
+      // Clean up previous instance
       if (timelineInstance.current) {
+        // Remove any existing event listeners to prevent memory leaks
+        if (typeof timelineInstance.current.off === "function") {
+          timelineInstance.current.off("change");
+        }
         timelineContainer.current.innerHTML = "";
         timelineInstance.current = null;
       }
 
       try {
+        // Initialize new timeline
         timelineInstance.current = new window.TL.Timeline(
           timelineContainer.current,
           timelineData,
@@ -179,11 +200,79 @@ const TimelineComponent = () => {
             el.style.display = "none";
           });
         }, 100);
+
+        // Add event listener to track current slide
+        timelineInstance.current.on("change", function (data) {
+          if (data && data.unique_id) {
+            try {
+              // Save the current position to localStorage
+              const lastViewed = localStorage.getItem("timelineLastViewed")
+                ? JSON.parse(localStorage.getItem("timelineLastViewed"))
+                : {};
+
+              lastViewed[selectedTimelineType] = data.unique_id;
+              localStorage.setItem(
+                "timelineLastViewed",
+                JSON.stringify(lastViewed)
+              );
+            } catch (e) {
+              console.error("Error saving timeline position:", e);
+            }
+          }
+        });
+
+        // Only restore position on initial render (after page refresh)
+        if (
+          isInitialRender.current &&
+          timelineData.events &&
+          timelineData.events.length > 0
+        ) {
+          try {
+            // Get the last viewed event ID for this timeline type
+            const lastViewed = localStorage.getItem("timelineLastViewed")
+              ? JSON.parse(localStorage.getItem("timelineLastViewed"))
+              : {};
+
+            const savedEventId = lastViewed[selectedTimelineType];
+
+            // If we have a saved position and it exists in the current timeline
+            if (
+              savedEventId &&
+              eventIdExists(savedEventId, timelineData.events)
+            ) {
+              // Use a small delay to ensure the timeline is fully initialized
+              setTimeout(() => {
+                try {
+                  timelineInstance.current.goToId(savedEventId);
+                } catch (err) {
+                  console.error("Error navigating to saved event:", err);
+                  // If navigation fails, go to the first event
+                  timelineInstance.current.goTo(0);
+                }
+              }, 300);
+            }
+          } catch (e) {
+            console.error("Error restoring timeline position:", e);
+          }
+
+          // Mark that we've handled the initial render
+          isInitialRender.current = false;
+        }
       } catch (initError) {
         console.error("Timeline initialization error:", initError);
       }
     }
-  }, [timelineData]);
+
+    // Cleanup function
+    return () => {
+      if (
+        timelineInstance.current &&
+        typeof timelineInstance.current.off === "function"
+      ) {
+        timelineInstance.current.off("change");
+      }
+    };
+  }, [timelineData, selectedTimelineType, eventIdExists]);
 
   // Effect to load TimelineJS assets
   useEffect(() => {
