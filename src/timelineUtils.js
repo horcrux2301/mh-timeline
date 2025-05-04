@@ -152,7 +152,7 @@ export const processCsvData = (csvData) => {
       events: events,
       title: {
         text: {
-          headline: "Modern History Events", // Consider making this dynamic if needed
+          headline: "History Events", // Consider making this dynamic if needed
         },
       },
     };
